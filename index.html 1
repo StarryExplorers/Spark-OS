@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spark OS 💻</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root {
+      --bg: #1e1e2e;
+      --text: #eee;
+      --accent: #ff4aff;
+      --win-bg: #2a2a3a;
+      --btn: #444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', sans-serif;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .desktop {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      background-image: url('https://images.unsplash.com/photo-1503264116251-35a269479413?auto=format&fit=crop&w=1500&q=80');
+      background-size: cover;
+      background-position: center;
+      padding: 10px;
+    }
+    .icon {
+      width: 70px;
+      text-align: center;
+      color: white;
+      cursor: pointer;
+      margin: 10px;
+    }
+    .icon img {
+      width: 48px;
+      height: 48px;
+    }
+    .window {
+      position: absolute;
+      top: 100px;
+      left: 100px;
+      width: 300px;
+      height: 300px;
+      background: var(--win-bg);
+      border: 2px solid var(--accent);
+      border-radius: 8px;
+      box-shadow: 0 0 15px black;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+    .titlebar {
+      background: var(--accent);
+      color: white;
+      padding: 5px;
+      cursor: move;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .titlebar span {
+      font-weight: bold;
+    }
+    .content {
+      flex: 1;
+      padding: 10px;
+      overflow: auto;
+    }
+    .close {
+      background: none;
+      border: none;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .widget {
+      position: absolute;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      font-size: 14px;
+      border-radius: 6px;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="desktop" id="desktop">
+    <div class="icon" onclick="openWindow('diary')">
+      <img src="https://img.icons8.com/fluency/48/diary.png"/>
+      <div>Diary</div>
+    </div>
+    <div class="icon" onclick="openWindow('vault')">
+      <img src="https://img.icons8.com/fluency/48/password.png"/>
+      <div>Vault</div>
+    </div>
+    <div class="icon" onclick="openWindow('code')">
+      <img src="https://img.icons8.com/fluency/48/source-code.png"/>
+      <div>Code</div>
+    </div>
+    <div class="icon" onclick="openWindow('temp')">
+      <img src="https://img.icons8.com/fluency/48/temperature.png"/>
+      <div>Convert</div>
+    </div>
+    <div class="icon" onclick="openWindow('apphub')">
+      <img src="https://img.icons8.com/fluency/48/combo-chart.png"/>
+      <div>App Hub</div>
+    </div>
+    <!-- Widgets -->
+    <div class="widget" style="top: 10px; right: 10px;" id="clockWidget"></div>
+    <div class="widget" style="top: 60px; right: 10px;" id="dateWidget"></div>
+  </div>
+
+  <template id="win-template">
+    <div class="window">
+      <div class="titlebar">
+        <span></span>
+        <button class="close">X</button>
+      </div>
+      <div class="content"></div>
+    </div>
+  </template>
+
+  <script>
+    const zStack = { count: 1 };
+
+    function openWindow(app) {
+      const template = document.getElementById("win-template");
+      const win = template.content.cloneNode(true);
+      const winEl = win.querySelector(".window");
+      const title = win.querySelector(".titlebar span");
+      const closeBtn = win.querySelector(".close");
+      const content = win.querySelector(".content");
+
+      let html = "";
+      if (app === 'diary') {
+        title.textContent = "Diary";
+        html = `<textarea rows='10' placeholder='Write your diary here...' style='width:100%; height:100%'>${localStorage.getItem("spark_diary") || ""}</textarea>`;
+      } else if (app === 'vault') {
+        title.textContent = "Password Vault";
+        html = `<textarea rows='10' placeholder='Your secret vault...' style='width:100%; height:100%'>${localStorage.getItem("spark_vault") || ""}</textarea>`;
+      } else if (app === 'code') {
+        title.textContent = "Code Editor";
+        html = `<textarea rows='10' placeholder='Write your code...' style='width:100%; height:100%'>${localStorage.getItem("spark_code") || ""}</textarea>`;
+      } else if (app === 'temp') {
+        title.textContent = "Temp Converter";
+        html = `<input id='temp' type='number' placeholder='°C'> <button onclick='document.getElementById("res").innerText = (document.getElementById("temp").value*9/5+32).toFixed(2)+" °F"'>→ °F</button><p id='res'></p>`;
+      } else if (app === 'apphub') {
+        title.textContent = "Spark-App-Hub";
+        html = `<iframe src='https://starryexplorers.github.io/Spark-App-Hub' width='100%' height='100%'></iframe>`;
+      }
+
+      content.innerHTML = html;
+
+      if (['diary', 'vault', 'code'].includes(app)) {
+        content.querySelector("textarea").addEventListener("input", e => {
+          localStorage.setItem(`spark_${app}`, e.target.value);
+        });
+      }
+
+      document.getElementById("desktop").appendChild(winEl);
+      dragElement(winEl);
+      winEl.style.zIndex = ++zStack.count;
+      closeBtn.onclick = () => winEl.remove();
+    }
+
+    function dragElement(elmnt) {
+      const header = elmnt.querySelector(".titlebar");
+      let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      header.onmousedown = dragMouseDown;
+      function dragMouseDown(e) {
+        e.preventDefault();
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        document.onmouseup = closeDragElement;
+        document.onmousemove = elementDrag;
+        elmnt.style.zIndex = ++zStack.count;
+      }
+      function elementDrag(e) {
+        pos1 = pos3 - e.clientX;
+        pos2 = pos4 - e.clientY;
+        pos3 = e.clientX;
+        pos4 = e.clientY;
+        elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+        elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+      }
+      function closeDragElement() {
+        document.onmouseup = null;
+        document.onmousemove = null;
+      }
+    }
+
+    function updateWidgets() {
+      const now = new Date();
+      document.getElementById("clockWidget").textContent = now.toLocaleTimeString();
+      document.getElementById("dateWidget").textContent = now.toDateString();
+    }
+    setInterval(updateWidgets, 1000);
+    updateWidgets();
+  </script>
+</body>
+</html>
